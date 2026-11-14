@@ -644,7 +644,7 @@
     btnLipat.title = lipat ? 'Buka panel' : 'Lipat panel';
   }
   btnLipat.addEventListener('click', function () { aturLipat(!panel.classList.contains('lipat')); });
-  function layarHp() { return window.innerWidth <= 760; }
+  function layarHp() { return window.innerWidth > 0 && window.innerWidth <= 760; }
   function tutupPanelHp() { if (layarHp()) aturLipat(true); }
   if (layarHp()) aturLipat(true); // di HP panel awalnya terlipat agar peta terlihat
 
@@ -653,7 +653,22 @@
     if (layarHp()) return { paddingTopLeft: [16, panel.offsetHeight + 24], paddingBottomRight: [16, 16] };
     return { paddingTopLeft: [panel.offsetWidth + 36, 20], paddingBottomRight: [230, 20] };
   }
-  function tampilAwal() { map.fitBounds(batasAwal, jarakPanel()); }
+  /* tampilan seluruh kota; bila ukuran peta belum terbaca (tab dibuka di latar belakang),
+     dipakai tampilan sementara lalu diulang saat ukuran peta sudah benar */
+  var sudahTampil = false;
+  function tampilAwal() {
+    var s = map.getSize();
+    if (s.x < 50 || s.y < 50) {
+      if (!map._loaded) map.setView(batasAwal.getCenter(), 13);
+      return;
+    }
+    var o = jarakPanel();
+    if (o.paddingTopLeft && (s.x - o.paddingTopLeft[0] - o.paddingBottomRight[0] < 150 ||
+        s.y - o.paddingTopLeft[1] - o.paddingBottomRight[1] < 150)) o = { padding: [10, 10] };
+    map.fitBounds(batasAwal, o);
+    sudahTampil = true;
+  }
+  map.on('resize', function () { if (!sudahTampil) tampilAwal(); });
 
   /* ------------------------------------------------------------------
      14. Tampilan awal
