@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WebGIS Kriminalitas Jalanan Kota Cimahi</title>
+<meta name="description" content="WebGIS analisis spasial daerah rawan kriminalitas jalanan (Curat, Curas, Curanmor) Kota Cimahi 2023-2025">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="css/style.css?v=5">
+</head>
+<body>
+<main id="map" class="peta" aria-label="Peta"></main>
+
+<aside id="panel" class="panel">
+  <header class="kepala">
+    <img src="img/logo_upi.png" alt="Logo Universitas Pendidikan Indonesia" class="logo">
+    <div class="judul">
+      <h1>WebGIS Daerah Rawan Kriminalitas Jalanan Kota Cimahi</h1>
+      <p>Curat, Curas, dan Curanmor Tahun 2023&ndash;2025</p>
+    </div>
+    <button id="btnLipat" class="btn-lipat" aria-expanded="true" aria-controls="badanPanel" title="Lipat panel">
+      <span aria-hidden="true">&#8963;</span>
+    </button>
+  </header>
+
+  <div id="badanPanel" class="badan">
+    <nav class="tab">
+      <button class="aktif" data-tab="tabLayer">Layer</button>
+      <button data-tab="tabStatistik">Statistik</button>
+      <button data-tab="tabInfo">Info</button>
+    </nav>
+
+    <!-- ===================== TAB LAYER ===================== -->
+    <section id="tabLayer" class="tab-isi aktif">
+
+      <div class="kelompok">
+        <h2>Titik Kejadian 3C</h2>
+        <label class="cek"><input type="checkbox" id="cekTitik" checked> Titik kejadian 3C</label>
+        <div class="sub">
+          <div class="label-kecil">Jenis kejahatan</div>
+          <div id="filterJenis" class="baris-cek"></div>
+          <div class="label-kecil">Tahun</div>
+          <div id="filterTahun" class="baris-cek"></div>
+          <div class="label-kecil">Kecamatan</div>
+          <select id="filterKecamatan">
+            <option value="semua">Semua kecamatan</option>
+            <option>Cimahi Utara</option>
+            <option>Cimahi Tengah</option>
+            <option>Cimahi Selatan</option>
+          </select>
+          <p id="jumlahTitik" class="jumlah"></p>
+        </div>
+      </div>
+
+      <div class="kelompok">
+        <h2>Kepadatan KDE dan Hotspot</h2>
+        <div class="label-kecil">Periode analisis</div>
+        <select id="periode">
+          <option value="2023_2025">2023&ndash;2025 (gabungan)</option>
+          <option value="2023">2023</option>
+          <option value="2024">2024</option>
+          <option value="2025">2025</option>
+        </select>
+        <label class="cek"><input type="checkbox" id="cekKde" checked> Kepadatan kejadian (KDE)</label>
+        <div class="sub geser">
+          <span class="label-kecil">Transparansi</span>
+          <input type="range" id="opasitasKde" min="0.2" max="1" step="0.05" value="0.7">
+        </div>
+        <label class="cek"><input type="checkbox" id="cekHotspot" checked> Titik hotspot</label>
+        <p id="jumlahHotspot" class="jumlah"></p>
+      </div>
+
+      <div class="kelompok">
+        <h2>Karakteristik Wilayah</h2>
+        <label class="cek"><input type="checkbox" id="cekLahan"> Penggunaan lahan (8 kelas)</label>
+        <label class="cek"><input type="checkbox" id="cekKepadatan"> Kepadatan penduduk per kelurahan</label>
+        <label class="cek"><input type="checkbox" id="cekKoridor"> Koridor kelas jalan (100 m)</label>
+        <label class="cek"><input type="checkbox" id="cekJalan"> Jaringan jalan utama</label>
+        <label class="cek sub"><input type="checkbox" id="cekJalanKecil"> Tampilkan juga jalan lingkungan, akses, dan setapak</label>
+      </div>
+
+      <div class="kelompok">
+        <h2>Batas Administrasi</h2>
+        <label class="cek"><input type="checkbox" id="cekKota" checked> Batas kota</label>
+        <label class="cek"><input type="checkbox" id="cekKecamatan" checked> Batas kecamatan</label>
+        <label class="cek"><input type="checkbox" id="cekKelurahan" checked> Batas kelurahan</label>
+        <div class="label-kecil">Perbesar ke kelurahan</div>
+        <select id="zoomKelurahan"><option value="">Pilih kelurahan&hellip;</option></select>
+      </div>
+
+      <div class="kelompok">
+        <h2>Lainnya</h2>
+        <label class="cek"><input type="checkbox" id="cekPatroli"> Jalur patroli</label>
+      </div>
+
+      <div class="kelompok">
+        <h2>Peta Dasar</h2>
+        <label class="cek"><input type="radio" name="basemap" value="terang" checked> Peta abu-abu terang (Esri)</label>
+        <label class="cek"><input type="radio" name="basemap" value="jalan"> Peta jalan (Esri)</label>
+        <label class="cek"><input type="radio" name="basemap" value="citra"> Citra satelit (Esri)</label>
+      </div>
+    </section>
+
+    <!-- ===================== TAB STATISTIK ===================== -->
+    <section id="tabStatistik" class="tab-isi">
+      <p class="catatan">Grafik bertanda <b>*</b> mengikuti filter jenis, tahun, dan kecamatan pada tab Layer.</p>
+      <div id="kartuRingkas" class="kartu-grid"></div>
+
+      <h2>Pola Persebaran</h2>
+      <h3>Kasus per tahun *</h3>
+      <div class="grafik"><canvas id="grafikTahun"></canvas></div>
+      <h3>Proporsi jenis kejahatan *</h3>
+      <div class="grafik pendek"><canvas id="grafikJenis"></canvas></div>
+      <h3>Kasus per kelurahan *</h3>
+      <div class="grafik tinggi"><canvas id="grafikKelurahan"></canvas></div>
+      <h3>Average Nearest Neighbor (ANN)</h3>
+      <div class="tabel-wrap"><table id="tabelAnn" class="tabel"></table></div>
+      <p class="catatan">NNI &lt; 1 dan p &lt; 0,05 menunjukkan pola mengelompok.</p>
+
+      <h2>Hotspot</h2>
+      <h3>Jumlah hotspot per tahun</h3>
+      <div class="grafik pendek"><canvas id="grafikHotspot"></canvas></div>
+
+      <h2>Karakteristik Wilayah</h2>
+      <h3>Kepadatan kasus per kelas penggunaan lahan</h3>
+      <div class="grafik"><canvas id="grafikLahan"></canvas></div>
+      <h3>Kepadatan kasus per koridor kelas jalan</h3>
+      <div class="grafik"><canvas id="grafikKoridor"></canvas></div>
+      <h3>Kepadatan penduduk dan jumlah kasus per kelurahan</h3>
+      <div class="grafik"><canvas id="grafikPenduduk"></canvas></div>
+    </section>
+
+    <!-- ===================== TAB INFO ===================== -->
+    <section id="tabInfo" class="tab-isi">
+      <div class="sorotan">
+        <p class="sorotan-judul">Kenali titik rawan, tingkatkan kewaspadaan</p>
+        <p>WebGIS ini memetakan di mana saja kriminalitas jalanan paling sering terjadi di Kota Cimahi selama 2023&ndash;2025. Fokusnya tiga jenis kejahatan yang paling banyak dilaporkan, yaitu <b>Curat</b> (pencurian dengan pemberatan), <b>Curas</b> (pencurian dengan kekerasan atau begal), dan <b>Curanmor</b> (pencurian kendaraan bermotor).</p>
+      </div>
+
+      <h2>Temuan Utama</h2>
+      <ul class="temuan">
+        <li><span class="angka-info">893</span><span>kejadian tercatat selama tiga tahun, dan <b>8 dari 10</b> di antaranya adalah pencurian kendaraan bermotor.</span></li>
+        <li><span class="angka-info">30</span><span>titik hotspot ditemukan. Kejadian tidak tersebar acak, tetapi <b>berkumpul</b> di kawasan tertentu, terutama di Cibeber, Cibabat, dan Padasuka.</span></li>
+        <li><span class="angka-info">95%</span><span>kejadian berada di <b>kawasan permukiman</b>, tempat warga paling banyak beraktivitas.</span></li>      </ul>
+
+      <h2>Cara Menggunakan</h2>
+      <ol class="langkah">
+        <li><b>Pilih layer</b> di tab Layer untuk menampilkan atau menyembunyikan informasi di peta.</li>
+        <li><b>Saring titik kejadian</b> berdasarkan jenis kejahatan, tahun, atau kecamatan.</li>
+        <li><b>Ganti periode</b> untuk melihat peta kepadatan dan hotspot tiap tahun.</li>
+        <li><b>Klik titik atau wilayah</b> di peta untuk melihat keterangan lengkapnya.</li>
+        <li><b>Buka tab Statistik</b> untuk melihat ringkasan angka dan grafik.</li>
+      </ol>
+
+      <h2>Cara Membaca Peta</h2>
+      <dl class="daftar">
+        <dt>Titik kejadian</dt>
+        <dd>Setiap titik mewakili satu kejadian. Warnanya menunjukkan jenis kejahatan.</dd>
+        <dt>Peta kepadatan (KDE)</dt>
+        <dd>Semakin merah warnanya, semakin banyak kejadian di sekitar lokasi tersebut. Kepadatan dihitung dalam radius 500 meter dan dibagi menjadi lima tingkat, dari Sangat Rendah sampai Sangat Tinggi.</dd>
+        <dt>Titik hotspot</dt>
+        <dd>Lingkaran besar menandai pusat kerawanan, yaitu lokasi dengan kepadatan kejadian tertinggi di sekitarnya. Lingkaran paling besar berarti tingkat Sangat Tinggi.</dd>
+        <dt>Karakteristik wilayah</dt>
+        <dd>Layer penggunaan lahan, kepadatan penduduk, dan koridor jalan membantu melihat kondisi wilayah tempat kejadian paling sering muncul.</dd>
+      </dl>
+
+      <h2>Bagaimana Data Diolah</h2>
+      <dl class="daftar">
+        <dt>Pola persebaran</dt>
+        <dd>Diuji dengan <i>Average Nearest Neighbor</i> (ANN) untuk mengetahui apakah kejadian mengelompok, acak, atau menyebar.</dd>
+        <dt>Kepadatan dan hotspot</dt>
+        <dd>Dihitung dengan <i>Kernel Density Estimation</i> (KDE) pada QGIS, lalu dikelompokkan menjadi lima kelas dengan metode <i>Natural Breaks</i> (Jenks).</dd>
+        <dt>Keterkaitan dengan wilayah</dt>
+        <dd>Titik kejadian dan hotspot ditumpangsusunkan (<i>overlay</i>) dengan penggunaan lahan, kepadatan penduduk, dan jaringan jalan.</dd>
+      </dl>
+
+      <h2>Sumber Data</h2>
+      <dl class="daftar">
+        <dt>Data kejadian</dt>
+        <dd>Jumlah kasus berasal dari rekapitulasi Satreskrim Polres Cimahi 2023&ndash;2025. Lokasi titik ditentukan berdasarkan penandaan (<i>tagging</i>) titik rawan oleh Kasatreskrim dalam wawancara serta lokasi dari pemberitaan, dan telah divalidasi.</dd>
+        <dt>Penggunaan lahan</dt>
+        <dd>Hasil klasifikasi citra satelit Sentinel-2 tahun 2023&ndash;2024 menjadi 8 kelas mengacu pada SNI 7645:2010.</dd>
+        <dt>Kependudukan</dt>
+        <dd>Jumlah penduduk per kelurahan dari Dukcapil Kota Cimahi tahun 2024.</dd>
+        <dt>Jaringan jalan</dt>
+        <dd>OpenStreetMap, dikelompokkan menjadi jalan arteri, kolektor, lokal utama, dan lingkungan.</dd>
+        <dt>Peta dasar</dt>
+        <dd>Esri (peta abu-abu terang, peta jalan, dan citra satelit).</dd>
+      </dl>
+
+      <p class="catatan">Peta ini menggambarkan kecenderungan lokasi rawan berdasarkan data 2023&ndash;2025, bukan jaminan bahwa suatu tempat pasti aman atau pasti terjadi kejahatan. Tetap waspada di mana pun Anda berada.</p>
+
+      <div class="penyusun">
+        <p class="label-kecil">Disusun oleh</p>
+        <p><b>Yusfi Alyandra Muhamad</b> (2206162)<br>Program Studi Survei Pemetaan dan Informasi Geografis<br>Universitas Pendidikan Indonesia, 2026</p>
+      </div>
+    </section>
+  </div>
+</aside>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="data/meta.js"></script>
+<script src="data/batas_kota.js"></script>
+<script src="data/batas_kecamatan.js"></script>
+<script src="data/batas_kelurahan.js"></script>
+<script src="data/titik_3c.js"></script>
+<script src="data/hotspot.js"></script>
+<script src="data/lahan.js"></script>
+<script src="data/kepadatan.js"></script>
+<script src="data/koridor.js"></script>
+<script src="data/jalan.js"></script>
+<script src="data/patroli_titik.js"></script>
+<script src="data/patroli_jalur.js"></script>
+<script src="js/app.js?v=2"></script>
+</body>
+</html>
