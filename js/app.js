@@ -195,7 +195,6 @@
           renderer: rTitik, radius: 4.5, color: '#fff', weight: 1, fillColor: WARNA_JENIS[p.JENIS], fillOpacity: 0.95
         }).bindPopup(popup(NAMA_JENIS[p.JENIS] + ' ' + p.TAHUN, [
           ['Kejadian'],
-          ['Nomor titik', p.ID],
           ['Jenis kejahatan', NAMA_LENGKAP[p.JENIS]],
           ['Tahun', p.TAHUN],
           ['Lokasi', p.NAMA_JLN],
