@@ -15,6 +15,11 @@
   var WARNA_JENIS = {};
   JENIS.forEach(function (j) { WARNA_JENIS[j.kode] = j.warna; });
   var NAMA_JENIS = { CURANMOR: 'Curanmor', CURAT: 'Curat', CURAS: 'Curas' };
+  var NAMA_LENGKAP = {
+    CURANMOR: 'Curanmor (pencurian kendaraan bermotor)',
+    CURAT: 'Curat (pencurian dengan pemberatan)',
+    CURAS: 'Curas (pencurian dengan kekerasan)'
+  };
   var TAHUN = [2023, 2024, 2025];
   var WARNA_TAHUN = { 2023: '#1f78b4', 2024: '#6a3d9a', 2025: '#b2182b' };
 
@@ -66,7 +71,8 @@
   function popup(judul, baris) {
     var h = '<div class="popup"><h4>' + judul + '</h4><table>';
     baris.forEach(function (b) {
-      if (b[1] !== null && b[1] !== undefined && b[1] !== '') h += '<tr><td>' + b[0] + '</td><td>' + b[1] + '</td></tr>';
+      if (b.length === 1) h += '<tr><td colspan="2" class="sub-judul">' + b[0] + '</td></tr>'; // judul bagian
+      else if (b[1] !== null && b[1] !== undefined && b[1] !== '') h += '<tr><td>' + b[0] + '</td><td>' + b[1] + '</td></tr>';
     });
     return h + '</table></div>';
   }
@@ -74,18 +80,20 @@
   /* ------------------------------------------------------------------
      3. Peta, panel (pane) urutan layer, dan peta dasar
   ------------------------------------------------------------------ */
-  var map = L.map('map', { zoomControl: false, preferCanvas: true, minZoom: 11, maxZoom: 19 });
+  var map = L.map('map', { zoomControl: false, minZoom: 11, maxZoom: 19 });
   L.control.zoom({ position: 'topright' }).addTo(map);
   L.control.scale({ imperial: false, position: 'bottomleft' }).addTo(map);
 
   [['poligon', 410], ['kde', 420], ['jalan', 430], ['batas', 440], ['patroli', 450], ['titik', 460], ['hotspot', 470]]
     .forEach(function (p) { map.createPane(p[0]).style.zIndex = p[1]; });
-  var rPoligon = L.canvas({ pane: 'poligon' });
-  var rJalan = L.canvas({ pane: 'jalan' });
-  var rBatas = L.canvas({ pane: 'batas' });
-  var rPatroli = L.canvas({ pane: 'patroli' });
-  var rTitik = L.canvas({ pane: 'titik' });
-  var rHotspot = L.canvas({ pane: 'hotspot' });
+  // SVG (bukan canvas): canvas yang ditumpuk per pane menutupi pane di bawahnya sehingga
+  // titik dan poligon di bawah hotspot tidak bisa diklik. Dengan SVG hanya objeknya yang menangkap klik.
+  var rPoligon = L.svg({ pane: 'poligon' });
+  var rJalan = L.svg({ pane: 'jalan' });
+  var rBatas = L.svg({ pane: 'batas' });
+  var rPatroli = L.svg({ pane: 'patroli' });
+  var rTitik = L.svg({ pane: 'titik' });
+  var rHotspot = L.svg({ pane: 'hotspot' });
 
   var BASEMAP = {
     terang: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
@@ -186,12 +194,24 @@
         L.circleMarker([c[1], c[0]], {
           renderer: rTitik, radius: 4.5, color: '#fff', weight: 1, fillColor: WARNA_JENIS[p.JENIS], fillOpacity: 0.95
         }).bindPopup(popup(NAMA_JENIS[p.JENIS] + ' ' + p.TAHUN, [
+          ['Kejadian'],
+          ['Nomor titik', p.ID],
+          ['Jenis kejahatan', NAMA_LENGKAP[p.JENIS]],
+          ['Tahun', p.TAHUN],
           ['Lokasi', p.NAMA_JLN],
-          ['Kelurahan', p.KELURAHAN],
-          ['Kecamatan', p.KECAMATAN],
+          ['Kelurahan', p.KELURAHAN + ', ' + p.KECAMATAN],
+          ['Koordinat', p.LAT.toFixed(5) + ', ' + p.LON.toFixed(5)],
+          ['Sumber titik', sumberTitik(p.JENIS_TTK)],
+          ['Kerawanan (KDE)'],
+          ['Kepadatan 2023–2025', angka(p.KDE_3THN, 1) + ' kasus/km² (' + p.KELAS_KDE_3THN + ')'],
+          ['Kepadatan tahun ' + p.TAHUN, angka(p.KDE_TAHUN, 1) + ' kasus/km² (' + p.KELAS_KDE_TAHUN + ')'],
+          ['Hotspot terdekat ' + p.TAHUN, p.HOTSPOT_TERDEKAT + ' (' + angka(p.JRK_HOTSPOT_M) + ' m)'],
+          ['Karakteristik wilayah'],
+          ['Penggunaan lahan', p.LAHAN_KELAS],
+          ['Kepadatan penduduk', angka(p.PDD_KEPADATAN) + ' jiwa/km² (' + p.PDD_KELAS_KPDT + ')'],
           ['Kelas jalan terdekat', p.KELAS_JALAN],
-          ['Sumber titik', sumberTitik(p.JENIS_TTK)]
-        ])).addTo(lyrTitik);
+          ['Zona koridor jalan', p.ZONA_KORIDOR]
+        ]), { maxWidth: 340 }).addTo(lyrTitik);
       });
     el('jumlahTitik').textContent = 'Menampilkan ' + angka(fitur.length) + ' dari ' + angka(semuaTitik.length) + ' kejadian';
     perbaruiGrafikFilter(fitur);
@@ -368,6 +388,9 @@
     var on = el(id).checked;
     if (id === 'cekJalanKecil') on = on && el('cekJalan').checked;
     if (on) map.addLayer(SAKLAR[id]); else map.removeLayer(SAKLAR[id]);
+    // saat layer poligon RM3 tampil, batas kelurahan tidak menangkap klik agar popup poligon bisa dibuka
+    map.getContainer().classList.toggle('ada-poligon',
+      map.hasLayer(lyrLahan) || map.hasLayer(lyrKepadatan) || map.hasLayer(lyrKoridor));
   }
   Object.keys(SAKLAR).forEach(function (id) {
     el(id).addEventListener('change', function () {
@@ -642,11 +665,20 @@
     panel.classList.toggle('lipat', lipat);
     btnLipat.setAttribute('aria-expanded', String(!lipat));
     btnLipat.title = lipat ? 'Buka panel' : 'Lipat panel';
+    aturJarakPopup();
   }
+  /* popup digeser otomatis agar tidak tertutup panel (kiri di laptop, atas di HP) */
+  function aturJarakPopup() {
+    L.Popup.prototype.options.autoPanPaddingTopLeft = layarHp()
+      ? L.point(10, panel.offsetHeight + 20)
+      : L.point(panel.offsetWidth + 30, 10);
+  }
+  window.addEventListener('resize', aturJarakPopup);
   btnLipat.addEventListener('click', function () { aturLipat(!panel.classList.contains('lipat')); });
   function layarHp() { return window.innerWidth > 0 && window.innerWidth <= 760; }
   function tutupPanelHp() { if (layarHp()) aturLipat(true); }
   if (layarHp()) aturLipat(true); // di HP panel awalnya terlipat agar peta terlihat
+  aturJarakPopup();
 
   /* jarak tepi peta supaya wilayah tidak tertutup panel (kiri) dan legenda (kanan) */
   function jarakPanel() {

@@ -151,6 +151,10 @@ select:focus { outline: 2px solid var(--utama-muda); border-color: var(--utama);
 .penyusun { border-top: 1px solid var(--garis); margin-top: 12px; padding-top: 8px; }
 .penyusun p { margin: 0; }
 
+/* ---------- klik tembus: kotak SVG tiap pane tidak menghalangi objek di pane bawahnya ---------- */
+.leaflet-pane > svg { pointer-events: none; }
+.ada-poligon .leaflet-batas-pane path.leaflet-interactive { pointer-events: none; }
+
 /* ---------- kontrol peta: digeser agar tidak tertutup panel ---------- */
 .leaflet-bottom.leaflet-left { left: calc(var(--lebar-panel) + 2 * var(--jarak)); }
 .leaflet-bar, .leaflet-control-zoom { border: 0 !important; box-shadow: var(--bayang) !important; border-radius: 8px !important; overflow: hidden; }
@@ -162,6 +166,8 @@ select:focus { outline: 2px solid var(--utama-muda); border-color: var(--utama);
 .popup table { border-collapse: collapse; font-size: 12px; }
 .popup td { padding: 2px 6px 2px 0; vertical-align: top; }
 .popup td:first-child { color: var(--teks-lemah); white-space: nowrap; }
+.popup td.sub-judul { color: var(--utama); font-weight: 700; padding-top: 7px; border-bottom: 1px solid var(--garis); white-space: normal; }
+.popup tr:first-child td.sub-judul { padding-top: 0; }
 .leaflet-popup-content { margin: 10px 12px; }
 
 .lbl-hotspot, .lbl-kel {
